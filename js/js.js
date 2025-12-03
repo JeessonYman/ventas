@@ -1,479 +1,382 @@
 // ========================================
-// VIRTUALMARKET PERÚ - JAVASCRIPT
-// Ejemplos de: Prompt, Confirm, Alert, DOM y Modales
+// VIRTUALMARKET PERÚ 
 // ========================================
 
+let carrito = [];
+const superModal = document.getElementById('superModal');
+
 // ========================================
-// 1. MENÚ HAMBURGUESA RESPONSIVO
+// 1. SISTEMA DE MODALES 
+// ========================================
+function openModal(type, title, htmlContent, showCancel = true, confirmText = 'Aceptar', cancelText = 'Cancelar') {
+    if (!superModal) return;
+
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const modalIcon = document.getElementById('modalIcon');
+    const btnConfirm = document.getElementById('btnConfirm');
+    const btnCancel = document.getElementById('btnCancel');
+
+    // Mostrar modal
+    superModal.style.display = 'flex';
+    setTimeout(() => superModal.classList.add('active'), 10);
+
+    // Contenido
+    modalTitle.innerText = title;
+    modalBody.innerHTML = htmlContent;
+
+    // Iconos
+    modalIcon.className = 'modal-icon ' + type;
+    let iconHtml = '<i class="fas fa-info-circle"></i>';
+    if (type === 'success') iconHtml = '<i class="fas fa-check-circle"></i>';
+    else if (type === 'error') iconHtml = '<i class="fas fa-times-circle"></i>';
+    else if (type === 'warning') iconHtml = '<i class="fas fa-exclamation-triangle"></i>';
+    else if (type === 'loading') iconHtml = '<div class="spinner"></div>';
+    modalIcon.innerHTML = iconHtml;
+
+    // Botones
+    btnConfirm.innerHTML = confirmText;
+    btnConfirm.style.display = 'block';
+
+    btnCancel.innerHTML = cancelText;
+    btnCancel.style.display = showCancel ? 'block' : 'none';
+
+    // Focus
+    const input = modalBody.querySelector('input');
+    if (input) setTimeout(() => input.focus(), 100);
+}
+
+function cerrarSuperModal() {
+    if (!superModal) return;
+    superModal.classList.remove('active');
+    setTimeout(() => superModal.style.display = 'none', 300);
+}
+
+// Cerrar al hacer clic fuera
+window.onclick = function(event) {
+    if (event.target == superModal) cerrarSuperModal();
+    const modalCarrito = document.getElementById('modalCarrito');
+    if (event.target == modalCarrito) modalCarrito.classList.remove('active');
+}
+
+// ========================================
+// 2. LÓGICA DEL CARRITO
+// ========================================
+
+function actualizarIconoCarrito() {
+    const count = carrito.reduce((acc, item) => acc + item.cantidad, 0);
+    const badge = document.getElementById('cartCount');
+    if (badge) {
+        badge.innerText = count;
+        badge.style.display = count > 0 ? 'inline-block' : 'none';
+        // Pequeña animación
+        badge.style.transform = 'scale(1.2)';
+        setTimeout(() => badge.style.transform = 'scale(1)', 200);
+    }
+}
+
+function agregarAlCarrito(nombreProducto, precio) {
+    openModal('info', 'Agregar Producto',
+        `<p>¿Cuántas unidades de <strong>${nombreProducto}</strong> deseas?</p>
+     <input type="number" id="modalQty" class="modal-input" value="1" min="1">`,
+        true, 'Agregar al Carrito');
+
+    document.getElementById('btnConfirm').onclick = () => {
+        const cantidad = parseInt(document.getElementById('modalQty').value);
+        if (isNaN(cantidad) || cantidad <= 0) return;
+
+        const total = precio * cantidad;
+        carrito.push({ producto: nombreProducto, precio: precio, cantidad: cantidad, total: total });
+
+        actualizarIconoCarrito(); // Actualizar burbuja roja
+
+        // MODAL DE ÉXITO CON OPCIONES DE NAVEGACIÓN
+        openModal('success', '¡Producto Agregado!',
+            `<p>Agregaste <strong>${cantidad} x ${nombreProducto}</strong></p>
+       <p style="color:#FFD93D; font-size:1.1em">Subtotal: S/${total.toFixed(2)}</p>`,
+            true, 'Ver Carrito', 'Seguir Comprando'); // Botón confirmar lleva al carrito, cancelar cierra
+
+        // Botón "Ver Carrito"
+        document.getElementById('btnConfirm').onclick = () => {
+            cerrarSuperModal();
+            mostrarCarrito();
+        };
+
+        // Botón "Seguir Comprando"
+        document.getElementById('btnCancel').onclick = cerrarSuperModal;
+    };
+}
+
+// Mostrar el modal antiguo (Lista de items)
+function mostrarCarrito() {
+    const modal = document.getElementById('modalCarrito');
+    const contenido = document.getElementById('carritoContenido');
+
+    contenido.innerHTML = '';
+
+    if (carrito.length === 0) {
+        contenido.innerHTML = '<p style="text-align: center; padding: 20px;">Tu carrito está vacío</p>';
+    } else {
+        let totalGeneral = 0;
+        carrito.forEach((item, index) => {
+            totalGeneral += item.total;
+            contenido.innerHTML += `
+        <div class="carrito-item">
+          <div><strong>${item.producto}</strong><br>
+          <small>${item.cantidad} x S/${item.precio}</small></div>
+          <button onclick="eliminarItem(${index})" style="background:#ff4757; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+        </div>`;
+        });
+        contenido.innerHTML += `<div class="carrito-total">Total: S/${totalGeneral.toFixed(2)}</div>`;
+    }
+    modal.classList.add('active');
+}
+
+function eliminarItem(index) {
+    carrito.splice(index, 1);
+    actualizarIconoCarrito();
+    mostrarCarrito(); // Refrescar vista
+}
+
+function cerrarModal() {
+    document.getElementById('modalCarrito').classList.remove('active');
+}
+
+// ========================================
+// 3. CHECKOUT (Compra Final)
+// ========================================
+function confirmarCompra() {
+    if (carrito.length === 0) {
+        openModal('warning', 'Carrito Vacío', '<p>Agrega productos antes.</p>', false);
+        document.getElementById('btnConfirm').onclick = cerrarSuperModal;
+        return;
+    }
+
+    // Cerrar el modal de lista primero
+    cerrarModal();
+
+    const total = carrito.reduce((sum, i) => sum + i.total, 0);
+
+    openModal('info', 'Finalizar Compra',
+        `<p>Total a pagar: <strong style="color:#FFD93D">S/${total.toFixed(2)}</strong></p>
+     <input type="text" id="chkName" class="modal-input" placeholder="Tu Nombre">
+     <input type="text" id="chkAddr" class="modal-input" placeholder="Dirección de envío">`,
+        true, 'Confirmar Pedido');
+
+    document.getElementById('btnConfirm').onclick = () => {
+        const nombre = document.getElementById('chkName').value;
+        const dir = document.getElementById('chkAddr').value;
+
+        if (!nombre || !dir) { alert('Completa los campos'); return; }
+
+        // Simular carga
+        openModal('loading', 'Procesando...', '<p>Validando pago...</p>', false, '');
+        document.getElementById('btnConfirm').style.display = 'none';
+
+        setTimeout(() => {
+            openModal('success', '¡Compra Exitosa!',
+                `<p>Gracias <strong>${nombre}</strong></p><p>Pedido enviado a: ${dir}</p>`,
+                false, 'Cerrar');
+            carrito = [];
+            actualizarIconoCarrito();
+            document.getElementById('btnConfirm').onclick = cerrarSuperModal;
+        }, 2500);
+    };
+}
+
+// ========================================
+// 4. CONTACTO Y BANDEJA DE MENSAJES
+// ========================================
+const contactForm = document.getElementById('contactForm');
+if (contactForm) {
+    contactForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const nombre = document.getElementById('nombre').value;
+        const producto = document.getElementById('producto').value;
+        const mensaje = document.getElementById('mensaje').value;
+        const fecha = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // 1. Mostrar Spinner
+        openModal('loading', 'Enviando Mensaje...', '<p>Conectando con el servidor...</p>', false, '');
+        document.getElementById('btnConfirm').style.display = 'none';
+
+        setTimeout(() => {
+            // 2. Mostrar Éxito
+            openModal('success', '¡Mensaje Enviado!',
+                `<p>Gracias <strong>${nombre}</strong>, hemos recibido tu consulta sobre <strong>${producto}</strong>.</p>
+         <p>Te responderemos a la brevedad.</p>`,
+                false, 'Aceptar');
+
+            document.getElementById('btnConfirm').onclick = cerrarSuperModal;
+
+            // 3. Agregar a la Bandeja (Historial)
+            const bandeja = document.getElementById('bandejaMensajes');
+            if (bandeja) {
+                bandeja.style.display = 'block';
+                const nuevoMsg = document.createElement('div');
+                nuevoMsg.className = 'mensaje-card';
+                // HTML del mensaje en la bandeja
+                nuevoMsg.innerHTML = `
+          <div class="mensaje-icon"><i class="fas fa-envelope-open-text"></i></div>
+          <div class="mensaje-content" style="width:100%">
+            <div style="display:flex; justify-content:space-between;">
+               <h4 style="margin:0; color:#FFD93D">Consulta: ${producto}</h4>
+               <span style="font-size:10px; color:white; background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;">CLICK PARA VER</span>
+            </div>
+            <small>Enviado a las ${fecha}</small>
+            <p style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${mensaje}</p>
+          </div>
+        `;
+
+                // 4. Hacer clicable para ver detalle
+                nuevoMsg.onclick = function() {
+                    openModal('info', 'Detalle del Mensaje',
+                        `<div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:10px;">
+               <p><strong>Fecha:</strong> ${fecha}</p>
+               <p><strong>Cliente:</strong> ${nombre}</p>
+               <p><strong>Producto:</strong> ${producto}</p>
+               <hr style="border-color:rgba(255,255,255,0.2); margin:10px 0;">
+               <p><strong>Mensaje:</strong><br>${mensaje}</p>
+             </div>`,
+                        false, 'Cerrar');
+                    document.getElementById('btnConfirm').onclick = cerrarSuperModal;
+                };
+
+                document.getElementById('listaMensajes').prepend(nuevoMsg); // Agregar al inicio
+            }
+            contactForm.reset();
+        }, 2000);
+    });
+}
+
+// ========================================
+// 5. NEWSLETTER (Arreglado)
+// ========================================
+function suscribirNewsletter() {
+    const email = document.getElementById('newsletterEmail').value;
+
+    if (!email.includes('@')) {
+        openModal('error', 'Error', '<p>Por favor ingresa un correo válido.</p>', false);
+        document.getElementById('btnConfirm').onclick = cerrarSuperModal;
+        return;
+    }
+
+    openModal('loading', 'Suscribiendo...', '', false, '');
+    document.getElementById('btnConfirm').style.display = 'none';
+
+    setTimeout(() => {
+        openModal('success', '¡Suscripción Exitosa!',
+            `<p>Gracias por unirte. Las mejores ofertas llegarán a: <br><strong>${email}</strong></p>`,
+            false, 'Genial');
+        document.getElementById('newsletterEmail').value = '';
+        document.getElementById('btnConfirm').onclick = cerrarSuperModal;
+    }, 1500);
+}
+
+// ========================================
+// 6. FUNCIONES DE UI GENERALES
 // ========================================
 const menuToggle = document.getElementById('menuToggle');
-const mainNav = document.getElementById('mainNav');
+if (menuToggle) {
+    menuToggle.addEventListener('click', () => {
+        document.getElementById('mainNav').classList.toggle('active');
+    });
+}
 
-menuToggle.addEventListener('click', () => {
-  mainNav.classList.toggle('active');
-  const icon = menuToggle.querySelector('i');
-  icon.classList.toggle('fa-bars');
-  icon.classList.toggle('fa-times');
-});
-
-// Cerrar menú al hacer click en un enlace
-document.querySelectorAll('.main-nav a').forEach(link => {
-  link.addEventListener('click', () => {
-    mainNav.classList.remove('active');
-    menuToggle.querySelector('i').classList.add('fa-bars');
-    menuToggle.querySelector('i').classList.remove('fa-times');
-  });
-});
-
-// ========================================
-// 2. SCROLL SUAVE Y BOTÓN SCROLL TO TOP
-// ========================================
-const scrollTopBtn = document.getElementById('scrollTop');
-
-window.addEventListener('scroll', () => {
-  if (window.pageYOffset > 300) {
-    scrollTopBtn.classList.add('visible');
-  } else {
-    scrollTopBtn.classList.remove('visible');
-  }
-  
-  // Efecto parallax en el hero
-  const scrolled = window.pageYOffset;
-  const hero = document.querySelector('.hero-background');
-  if (hero) {
-    hero.style.transform = `translateY(${scrolled * 0.5}px)`;
-  }
-});
-
-scrollTopBtn.addEventListener('click', () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
-
-// Scroll suave para todos los enlaces internos
+// Scroll suave para links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener('click', function (e) {
-    e.preventDefault();
-    const target = document.querySelector(this.getAttribute('href'));
-    if (target) {
-      const headerOffset = 80;
-      const elementPosition = target.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-    }
-  });
-});
+    anchor.addEventListener('click', function(e) {
+        // Si es el link del carrito, no hacer scroll
+        if (this.getAttribute('onclick')) return;
 
-// ========================================
-// 3. EJEMPLOS DE PROMPT, CONFIRM Y ALERT
-// ========================================
-
-// Variable global para almacenar carrito
-let carrito = [];
-
-// Función para agregar productos al carrito (con PROMPT y CONFIRM)
-function agregarAlCarrito(nombreProducto, precio) {
-  // PROMPT: Solicitar cantidad al usuario
-  let cantidad = prompt(`¿Cuántas unidades de "${nombreProducto}" deseas agregar?`, '1');
-  
-  // Validar que el usuario ingresó algo
-  if (cantidad === null || cantidad === '') {
-    alert('No ingresaste ninguna cantidad. Operación cancelada.');
-    return;
-  }
-  
-  // Convertir a número y validar
-  cantidad = parseInt(cantidad);
-  
-  if (isNaN(cantidad) || cantidad <= 0) {
-    alert('⚠️ Cantidad no válida. Por favor ingresa un número mayor a 0.');
-    return;
-  }
-  
-  // CONFIRM: Confirmar la acción
-  let confirmar = confirm(`¿Confirmas agregar ${cantidad} unidad(es) de "${nombreProducto}" al carrito?\n\nPrecio unitario: S/${precio.toFixed(2)}\nTotal: S/${(precio * cantidad).toFixed(2)}`);
-  
-  if (confirmar) {
-    // Agregar al carrito
-    carrito.push({
-      producto: nombreProducto,
-      precio: precio,
-      cantidad: cantidad,
-      total: precio * cantidad
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            window.scrollTo({
+                top: target.offsetTop - 80,
+                behavior: 'smooth'
+            });
+            // Cerrar menú móvil si está abierto
+            document.getElementById('mainNav').classList.remove('active');
+        }
     });
-    
-    // ALERT: Confirmar que se agregó
-    alert(`✅ ¡Producto agregado!\n\n${cantidad} x ${nombreProducto}\nTotal: S/${(precio * cantidad).toFixed(2)}`);
-    
-    // Mostrar modal con el carrito
-    mostrarCarrito();
-  } else {
-    alert('Operación cancelada.');
-  }
-}
+});
 
 // ========================================
-// 4. MANIPULACIÓN DEL DOM - MODAL DEL CARRITO
+// 7. LÓGICA DEL LOGIN (Solo funciona en login.html)
 // ========================================
+const loginForm = document.getElementById('loginForm');
 
-// Función para mostrar el modal del carrito
-function mostrarCarrito() {
-  const modal = document.getElementById('modalCarrito');
-  const contenido = document.getElementById('carritoContenido');
-  
-  // Limpiar contenido previo
-  contenido.innerHTML = '';
-  
-  if (carrito.length === 0) {
-    contenido.innerHTML = '<p style="text-align: center; color: #718096; padding: 20px;">Tu carrito está vacío</p>';
-  } else {
-    let totalGeneral = 0;
-    
-    // Crear elementos del DOM dinámicamente para cada producto
-    carrito.forEach((item, index) => {
-      totalGeneral += item.total;
-      
-      // Crear div del producto
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'carrito-item';
-      itemDiv.innerHTML = `
-        <div>
-          <strong>${item.producto}</strong><br>
-          <span style="color: #718096; font-size: 14px;">
-            ${item.cantidad} x S/${item.precio.toFixed(2)} = S/${item.total.toFixed(2)}
-          </span>
-        </div>
-        <button onclick="eliminarDelCarrito(${index})" style="background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">
-          <i class="fas fa-trash"></i> Eliminar
-        </button>
-      `;
-      
-      contenido.appendChild(itemDiv);
+if (loginForm) {
+    // Función para crear las alertas (Toasts) en el Login
+    function showLoginToast(type, title, message) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        let iconHtml = '';
+        if (type === 'success') iconHtml = '<i class="fas fa-check-circle" style="color:#2ed573"></i>';
+        else if (type === 'error') iconHtml = '<i class="fas fa-times-circle" style="color:#ff4757"></i>';
+        else if (type === 'warning') iconHtml = '<i class="fas fa-exclamation-triangle" style="color:#ffa502"></i>';
+
+        toast.innerHTML = `
+            ${iconHtml}
+            <div class="toast-content">
+                <h4 style="margin:0; font-size:16px; color:#333">${title}</h4>
+                <p style="margin:5px 0 0; color:#666; font-size:14px">${message}</p>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        // Animación de entrada y salida
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    }
+
+    // Evento del botón INGRESAR
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const btn = document.querySelector('.btn-login');
+        const originalText = btn.innerHTML;
+        const card = document.querySelector('.login-container');
+
+        // 1. Validar campos vacíos
+        if (!user || !pass) {
+            showLoginToast('warning', 'Atención', 'Por favor completa usuario y contraseña.');
+            card.classList.add('shake-anim'); // Activar vibración
+            setTimeout(() => card.classList.remove('shake-anim'), 500);
+            return;
+        }
+
+        // 2. Simular carga (Animación del botón)
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+
+        setTimeout(() => {
+            // 3. Validar credenciales
+            if (user === 'admin' && pass === '1234') {
+                showLoginToast('success', '¡Bienvenido!', 'Credenciales correctas. Entrando...');
+                setTimeout(() => {
+                    window.location.href = 'Tienda.HTML';
+                }, 1500);
+            } else {
+                // Error
+                showLoginToast('error', 'Acceso Denegado', 'Usuario o contraseña incorrectos.');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                document.getElementById('password').value = ''; // Limpiar contraseña
+
+                // Vibración de error
+                card.classList.add('shake-anim');
+                setTimeout(() => card.classList.remove('shake-anim'), 500);
+            }
+        }, 1500); // Tiempo de espera simulado
     });
-    
-    // Agregar total
-    const totalDiv = document.createElement('div');
-    totalDiv.className = 'carrito-total';
-    totalDiv.textContent = `Total: S/${totalGeneral.toFixed(2)}`;
-    contenido.appendChild(totalDiv);
-  }
-  
-  // Mostrar modal
-  modal.classList.add('active');
 }
-
-// Función para cerrar modal
-function cerrarModal() {
-  const modal = document.getElementById('modalCarrito');
-  modal.classList.remove('active');
-}
-
-// Cerrar modal al hacer click fuera de él
-window.onclick = function(event) {
-  const modal = document.getElementById('modalCarrito');
-  if (event.target === modal) {
-    modal.classList.remove('active');
-  }
-}
-
-// Función para eliminar producto del carrito (MANIPULACIÓN DEL DOM)
-function eliminarDelCarrito(index) {
-  const productoEliminado = carrito[index];
-  
-  // CONFIRM antes de eliminar
-  if (confirm(`¿Deseas eliminar "${productoEliminado.producto}" del carrito?`)) {
-    carrito.splice(index, 1);
-    
-    // Actualizar la vista del carrito
-    mostrarCarrito();
-    
-    // Si el carrito quedó vacío, mostrar mensaje
-    if (carrito.length === 0) {
-      alert('El carrito está vacío.');
-    }
-  }
-}
-
-// Función para confirmar compra
-function confirmarCompra() {
-  if (carrito.length === 0) {
-    alert('⚠️ Tu carrito está vacío. Agrega productos antes de confirmar la compra.');
-    return;
-  }
-  
-  let totalGeneral = carrito.reduce((sum, item) => sum + item.total, 0);
-  
-  // Crear resumen de compra
-  let resumen = '🛒 RESUMEN DE TU COMPRA\n\n';
-  carrito.forEach(item => {
-    resumen += `• ${item.cantidad} x ${item.producto} = S/${item.total.toFixed(2)}\n`;
-  });
-  resumen += `\n💰 TOTAL: S/${totalGeneral.toFixed(2)}`;
-  
-  // CONFIRM para finalizar compra
-  if (confirm(resumen + '\n\n¿Deseas confirmar tu compra?')) {
-    // PROMPT para datos de envío
-    let nombre = prompt('Ingresa tu nombre completo:', '');
-    
-    if (!nombre) {
-      alert('Debes ingresar tu nombre para continuar.');
-      return;
-    }
-    
-    let direccion = prompt('Ingresa tu dirección de envío:', '');
-    
-    if (!direccion) {
-      alert('Debes ingresar tu dirección para continuar.');
-      return;
-    }
-    
-    // Simular procesamiento
-    alert('⏳ Procesando tu compra...');
-    
-    setTimeout(() => {
-      alert(`✅ ¡Compra confirmada!\n\n👤 Cliente: ${nombre}\n📍 Dirección: ${direccion}\n💰 Total: S/${totalGeneral.toFixed(2)}\n\n¡Gracias por tu compra! Tu pedido llegará en 24-48 horas.`);
-      
-      // Vaciar carrito
-      carrito = [];
-      cerrarModal();
-    }, 1000);
-  }
-}
-
-// ========================================
-// 5. FORMULARIO DE CONTACTO CON VALIDACIÓN
-// ========================================
-
-document.getElementById('contactForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  
-  // Obtener valores del formulario (MANIPULACIÓN DEL DOM)
-  const nombre = document.getElementById('nombre').value;
-  const correo = document.getElementById('correo').value;
-  const celular = document.getElementById('celular').value;
-  const producto = document.getElementById('producto').value;
-  const mensaje = document.getElementById('mensaje').value;
-  
-  // Validación adicional con CONFIRM
-  const confirmar = confirm(`¿Deseas enviar este mensaje?\n\nNombre: ${nombre}\nCorreo: ${correo}\nCelular: ${celular}\nProducto: ${producto}`);
-  
-  if (!confirmar) {
-    alert('Envío cancelado.');
-    return;
-  }
-  
-  // Cambiar estado del botón
-  const btn = e.target.querySelector('button[type="submit"]');
-  const originalText = btn.innerHTML;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-  btn.disabled = true;
-  btn.style.background = '#718096';
-  
-  // Simular envío
-  setTimeout(() => {
-    btn.innerHTML = '<i class="fas fa-check"></i> ¡Enviado!';
-    btn.style.background = '#27ae60';
-    
-    // ALERT de confirmación
-    setTimeout(() => {
-      alert(`✅ ¡Mensaje enviado con éxito!\n\nGracias ${nombre}, nos pondremos en contacto contigo pronto al correo ${correo}.`);
-      
-      // Resetear formulario
-      e.target.reset();
-      btn.innerHTML = originalText;
-      btn.style.background = '';
-      btn.disabled = false;
-    }, 1000);
-  }, 2000);
-});
-
-// ========================================
-// 6. NEWSLETTER CON PROMPT Y VALIDACIÓN
-// ========================================
-
-function suscribirNewsletter() {
-  const emailInput = document.getElementById('newsletterEmail');
-  const email = emailInput.value.trim();
-  
-  // Validar email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
-  if (!email) {
-    alert('⚠️ Por favor ingresa tu correo electrónico.');
-    return;
-  }
-  
-  if (!emailRegex.test(email)) {
-    alert('⚠️ Por favor ingresa un correo electrónico válido.');
-    return;
-  }
-  
-  // CONFIRM suscripción
-  if (confirm(`¿Deseas suscribirte al newsletter con el correo:\n${email}?`)) {
-    // Simular suscripción
-    alert(`🎉 ¡Suscripción exitosa!\n\nGracias por suscribirte. Recibirás nuestras ofertas exclusivas en ${email}.`);
-    emailInput.value = '';
-  }
-}
-
-// ========================================
-// 7. ANIMACIONES CON INTERSECTION OBSERVER
-// ========================================
-
-const observerOptions = {
-  threshold: 0.1,
-  rootMargin: '0px 0px -100px 0px'
-};
-
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('animate-in');
-    }
-  });
-}, observerOptions);
-
-// Observar elementos para animaciones
-document.querySelectorAll('.service-card, .feature-item, .info-item').forEach(el => {
-  observer.observe(el);
-});
-
-// ========================================
-// 8. EFECTO PARALLAX EN SHAPES
-// ========================================
-
-document.addEventListener('mousemove', (e) => {
-  const shapes = document.querySelectorAll('.floating-shapes .shape');
-  const mouseX = e.clientX / window.innerWidth;
-  const mouseY = e.clientY / window.innerHeight;
-  
-  shapes.forEach((shape, index) => {
-    const speed = (index + 1) * 20;
-    const x = mouseX * speed;
-    const y = mouseY * speed;
-    shape.style.transform = `translate(${x}px, ${y}px) rotate(${x + y}deg)`;
-  });
-});
-
-// ========================================
-// 9. MODIFICAR ELEMENTOS DEL DOM DINÁMICAMENTE
-// ========================================
-
-// Cambiar color de los badges de stock aleatoriamente cada 5 segundos (ejemplo didáctico)
-function cambiarColoresStock() {
-  const badges = document.querySelectorAll('.stock-badge');
-  badges.forEach(badge => {
-    const clases = ['disponible', 'alta', 'bajo'];
-    const claseAleatoria = clases[Math.floor(Math.random() * clases.length)];
-    
-    // Remover clases anteriores
-    badge.classList.remove('disponible', 'alta', 'bajo');
-    
-    // Agregar nueva clase (esto es solo un ejemplo didáctico)
-    // badge.classList.add(claseAleatoria);
-  });
-}
-
-// Descomentar la siguiente línea para ver el efecto:
-// setInterval(cambiarColoresStock, 5000);
-
-// ========================================
-// 10. FUNCIÓN PARA MOSTRAR MENSAJE DE BIENVENIDA
-// ========================================
-
-// Mostrar mensaje de bienvenida al cargar la página (solo la primera vez)
-window.addEventListener('load', () => {
-  // Verificar si es la primera visita
-  const primeraVisita = !localStorage.getItem('visitado');
-  
-  if (primeraVisita) {
-    setTimeout(() => {
-      const nombre = prompt('👋 ¡Bienvenido a VirtualMarket Perú!\n\n¿Cómo te llamas?', '');
-      
-      if (nombre && nombre.trim() !== '') {
-        alert(`¡Hola ${nombre}! 🎉\n\nGracias por visitar nuestra tienda virtual. Explora nuestros productos y aprovecha las ofertas exclusivas.`);
-        localStorage.setItem('visitado', 'true');
-        localStorage.setItem('nombreUsuario', nombre);
-      }
-    }, 2000);
-  } else {
-    // Saludar al usuario que regresa
-    const nombreGuardado = localStorage.getItem('nombreUsuario');
-    if (nombreGuardado) {
-      console.log(`¡Bienvenido de nuevo, ${nombreGuardado}!`);
-    }
-  }
-});
-
-// ========================================
-// 11. EJEMPLO ADICIONAL: CREAR ELEMENTOS DINÁMICAMENTE
-// ========================================
-
-// Función para agregar una fila nueva a la tabla de productos (ejemplo didáctico)
-function agregarProductoDinamico() {
-  const tabla = document.querySelector('.productos-table tbody');
-  
-  // Crear nueva fila
-  const nuevaFila = document.createElement('tr');
-  nuevaFila.innerHTML = `
-    <td data-label="Producto">
-      <div class="producto-info">
-        <i class="fas fa-desktop"></i>
-        <span>Monitor LG UltraWide</span>
-      </div>
-    </td>
-    <td data-label="Precio" class="precio">S/1,200.00</td>
-    <td data-label="Stock"><span class="stock-badge disponible">15 unidades</span></td>
-    <td data-label="Rating">
-      <div class="rating">
-        <i class="fas fa-star"></i>
-        <i class="fas fa-star"></i>
-        <i class="fas fa-star"></i>
-        <i class="fas fa-star"></i>
-        <i class="fas fa-star"></i>
-      </div>
-    </td>
-    <td data-label="Acción">
-      <button class="btn-table" onclick="agregarAlCarrito('Monitor LG UltraWide', 1200)">Agregar</button>
-    </td>
-  `;
-  
-  // Agregar la fila a la tabla
-  tabla.appendChild(nuevaFila);
-  
-  // Animación de entrada
-  nuevaFila.style.animation = 'rowFadeIn 0.6s ease forwards';
-}
-
-// Descomentar para agregar un producto automáticamente después de 3 segundos:
-// setTimeout(agregarProductoDinamico, 3000);
-
-// ========================================
-// 12. CONTADOR DE VISITAS (ejemplo didáctico)
-// ========================================
-
-function actualizarContadorVisitas() {
-  let visitas = localStorage.getItem('contadorVisitas') || 0;
-  visitas = parseInt(visitas) + 1;
-  localStorage.setItem('contadorVisitas', visitas);
-  
-  console.log(`Esta es tu visita número ${visitas} a VirtualMarket Perú`);
-}
-
-actualizarContadorVisitas();
-
-// ========================================
-// FIN DEL SCRIPT
-// ========================================
-
-console.log('✅ VirtualMarket Perú - JavaScript cargado correctamente');
-console.log('📚 Ejemplos implementados:');
-console.log('   1. Menú hamburguesa responsivo');
-console.log('   2. Alert, Prompt y Confirm en el carrito');
-console.log('   3. Manipulación del DOM (modal del carrito)');
-console.log('   4. Validación de formularios');
-console.log('   5. Animaciones y efectos interactivos');
-console.log('   6. localStorage para persistencia de datos');
