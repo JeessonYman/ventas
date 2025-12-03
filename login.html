@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - VirtualMarket Perú</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="login-page"> <div class="shape shape-1"></div>
+  <div class="shape shape-2"></div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="login-container">
+    <div class="logo" style="margin: 0 auto 20px;">
+      <i class="fas fa-store"></i>
+    </div>
+    <h2>Bienvenido</h2>
+    <p class="subtitle">Panel de Administración</p>
+
+    <form id="loginForm">
+      <div class="input-group">
+        <i class="fas fa-user"></i>
+        <input type="text" id="username" class="input-glass" placeholder="Usuario" autocomplete="off">
+      </div>
+      
+      <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="password" class="input-glass" placeholder="Contraseña">
+      </div>
+
+      <button type="submit" class="btn-login">INGRESAR</button>
+    </form>
+
+    <div style="margin-top: 20px; color: rgba(255,255,255,0.7); font-size: 0.9em;">
+      Usuario: <b>admin</b> | Pass: <b>1234</b>
+    </div>
+  </div>
+
+  <script src="./js/js.js"></script>
+</body>
+</html>
